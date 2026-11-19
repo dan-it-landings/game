@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Таблиця множення: гра</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FFF7EC; --card:#FFFFFF; --ink:#22304A; --muted:#7A8499;
+    --blue:#3D6FF2; --blue-soft:#E6EDFF;
+    --green:#1FA971; --green-soft:#E2F7EE;
+    --red:#E5484D; --red-soft:#FDE8E8;
+    --star:#FFB800; --star-off:#E4E1DA; --line:#EFE7DA;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:'Nunito',system-ui,sans-serif;background:var(--bg);color:var(--ink);
+       display:flex;justify-content:center;-webkit-tap-highlight-color:transparent;user-select:none}
+  .app{width:100%;max-width:560px;padding:20px 18px 28px;display:flex;flex-direction:column;min-height:100%}
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+  h1{font-size:22px;font-weight:900;letter-spacing:-.3px}
+  .total{display:flex;align-items:center;gap:6px;background:var(--card);border:2px solid var(--line);
+         border-radius:999px;padding:6px 14px;font-weight:900;font-size:18px}
+  .total svg{width:20px;height:20px}
+  .screen{display:none;flex:1;flex-direction:column}
+  .screen.active{display:flex}
+  button{font-family:inherit;cursor:pointer;border:none}
+  .btn{background:var(--blue);color:#fff;font-weight:900;font-size:18px;border-radius:16px;padding:14px 22px;
+       box-shadow:0 4px 0 #2A52BD;transition:transform .08s}
+  .btn:active{transform:translateY(3px);box-shadow:0 1px 0 #2A52BD}
+  .btn.ghost{background:var(--card);color:var(--ink);border:2px solid var(--line);box-shadow:0 4px 0 var(--line)}
+  .link{background:none;color:var(--muted);font-weight:800;font-size:14px;text-decoration:underline;padding:8px}
+
+  /* Map */
+  .hint{color:var(--muted);font-weight:700;margin-bottom:16px;font-size:15px}
+  .levels{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .lvl{background:var(--card);border:2px solid var(--line);border-radius:20px;padding:14px 6px 12px;
+       display:flex;flex-direction:column;align-items:center;gap:6px;box-shadow:0 4px 0 var(--line);color:var(--ink)}
+  .lvl .n{font-size:30px;font-weight:900;line-height:1}
+  .lvl .n small{font-size:18px;color:var(--muted);margin-right:2px}
+  .lvl.current{border-color:var(--blue);box-shadow:0 4px 0 var(--blue)}
+  .lvl.locked{opacity:.45;cursor:not-allowed}
+  .lvl:not(.locked):active{transform:translateY(3px);box-shadow:0 1px 0 var(--line)}
+  .stars{display:flex;gap:2px}
+  .stars svg{width:18px;height:18px}
+  .lock{font-size:13px;font-weight:800;color:var(--muted);height:18px}
+  .map-foot{margin-top:auto;padding-top:22px;text-align:center}
+
+  /* Play */
+  .topbar{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+  .back{background:var(--card);border:2px solid var(--line);border-radius:12px;width:42px;height:42px;
+        font-size:20px;font-weight:900;color:var(--ink);flex-shrink:0}
+  .bar{flex:1;height:16px;background:var(--card);border:2px solid var(--line);border-radius:999px;overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:var(--green);border-radius:999px;transition:width .35s}
+  .count{font-weight:900;font-size:15px;color:var(--muted);min-width:44px;text-align:right}
+  .meta{display:flex;justify-content:space-between;color:var(--muted);font-weight:800;font-size:14px;margin-bottom:14px}
+  .card{background:var(--card);border:2px solid var(--line);border-radius:28px;padding:34px 16px 28px;
+        text-align:center;transition:background .2s,border-color .2s}
+  .card.ok{background:var(--green-soft);border-color:var(--green)}
+  .card.bad{background:var(--red-soft);border-color:var(--red)}
+  .expr{font-size:clamp(46px,14vw,72px);font-weight:900;letter-spacing:-1px;display:flex;
+        justify-content:center;align-items:baseline;gap:.22em;flex-wrap:wrap}
+  .ans{min-width:1.6em;display:inline-flex;gap:.3em;justify-content:center;align-items:baseline}
+  .slot{border-bottom:5px solid var(--blue);min-width:1.4em;padding:0 .1em;color:var(--blue)}
+  .slot.empty::after{content:'?';color:#C9D3EE}
+  .card.ok .slot{color:var(--green);border-color:var(--green)}
+  .wrong{color:var(--red);text-decoration:line-through;text-decoration-thickness:6px}
+  .right{color:var(--green)}
+  .msg{min-height:26px;margin-top:14px;font-weight:800;font-size:17px;color:var(--muted)}
+  .card.bad .msg{color:var(--red)}
+  .card.ok .msg{color:var(--green)}
+  .repeat-tag{display:inline-block;margin-bottom:8px;font-size:13px;font-weight:900;color:#B7791F;
+              background:#FFF1D6;border-radius:999px;padding:3px 10px;visibility:hidden}
+  .repeat-tag.show{visibility:visible}
+  .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px}
+  .key{background:var(--card);border:2px solid var(--line);border-radius:16px;height:60px;font-size:26px;
+       font-weight:900;color:var(--ink);box-shadow:0 4px 0 var(--line)}
+  .key:active{transform:translateY(3px);box-shadow:0 1px 0 var(--line)}
+  .key.go{background:var(--blue);color:#fff;border-color:var(--blue);box-shadow:0 4px 0 #2A52BD}
+  .key.del{font-size:22px}
+  .kbd-hint{text-align:center;color:var(--muted);font-size:13px;font-weight:700;margin-top:12px}
+  .shake{animation:shake .35s}
+  @keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+  .pop{animation:pop .3s}
+  @keyframes pop{50%{transform:scale(1.05)}}
+
+  /* Result */
+  .result{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px}
+  .big-stars{display:flex;gap:10px;margin:6px 0}
+  .big-stars svg{width:64px;height:64px;opacity:0;transform:scale(.3)}
+  .big-stars svg.in{animation:starIn .45s forwards}
+  @keyframes starIn{60%{opacity:1;transform:scale(1.2)}100%{opacity:1;transform:scale(1)}}
+  .result h2{font-size:30px;font-weight:900}
+  .result p{color:var(--muted);font-weight:700;font-size:17px;max-width:380px}
+  .stat{display:flex;gap:12px;margin:6px 0 10px}
+  .stat div{background:var(--card);border:2px solid var(--line);border-radius:16px;padding:10px 16px;min-width:96px}
+  .stat b{display:block;font-size:26px;font-weight:900}
+  .stat span{font-size:13px;color:var(--muted);font-weight:800}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+  .rules{margin-top:18px;background:var(--card);border:2px solid var(--line);border-radius:18px;padding:14px 16px;
+         font-size:14px;font-weight:700;color:var(--muted);line-height:1.5}
+  .rules b{color:var(--ink)}
+
+  /* Modal */
+  .modal{position:fixed;inset:0;background:rgba(34,48,74,.45);display:none;align-items:center;justify-content:center;padding:20px}
+  .modal.show{display:flex}
+  .modal .box{background:var(--card);border-radius:22px;padding:22px;max-width:340px;text-align:center}
+  .modal p{font-weight:800;margin-bottom:16px;font-size:17px}
+  .modal .actions .btn{font-size:16px;padding:12px 18px}
+  .btn.danger{background:var(--red);box-shadow:0 4px 0 #B3343A}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Таблиця множення</h1>
+    <div class="total" title="Усього зірочок"><span id="totalStars">0</span><svg viewBox="0 0 24 24"><path fill="#FFB800" d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6L2.5 9.4l6.6-.8z"/></svg></div>
+  </header>
+
+  <!-- Map -->
+  <section class="screen active" id="mapScreen">
+    <p class="hint">Проходь рівні по черзі. Кожен наступний відкривається, коли пройдено попередній.</p>
+    <div class="levels" id="levels"></div>
+    <div class="rules">
+      <b>Як грати.</b> Введи відповідь з клавіатури й натисни Enter. Приклади з помилкою повернуться трохи згодом.
+      Рівень пройдено, коли всі приклади розв'язано і правильних відповідей не менше 90%.<br>
+      <b>Зірочки:</b> ★★★ без жодної помилки, ★★ з однією помилкою, ★ рівень пройдено з повторної спроби.
+    </div>
+    <div class="map-foot"><button class="link" id="resetBtn">Почати все спочатку</button></div>
+  </section>
+
+  <!-- Play -->
+  <section class="screen" id="playScreen">
+    <div class="topbar">
+      <button class="back" id="backBtn" aria-label="До рівнів">←</button>
+      <div class="bar"><i id="barFill"></i></div>
+      <div class="count" id="countTxt">0/10</div>
+    </div>
+    <div class="meta"><span id="lvlTxt">Множення на 2</span><span id="accTxt">Точність: —</span></div>
+    <div class="card" id="card">
+      <span class="repeat-tag" id="repeatTag">↻ повторюємо</span>
+      <div class="expr" id="expr"></div>
+      <div class="msg" id="msg">&nbsp;</div>
+    </div>
+    <div class="pad" id="pad"></div>
+    <p class="kbd-hint">Можна вводити з клавіатури: цифри, Backspace, Enter</p>
+  </section>
+
+  <!-- Result -->
+  <section class="screen" id="resultScreen">
+    <div class="result">
+      <div class="big-stars" id="bigStars"></div>
+      <h2 id="resTitle">Чудово!</h2>
+      <p id="resText"></p>
+      <div class="stat">
+        <div><b id="resAcc">100%</b><span>точність</span></div>
+        <div><b id="resErr">0</b><span>помилок</span></div>
+      </div>
+      <div class="actions" id="resActions"></div>
+    </div>
+  </section>
+</div>
+
+<div class="modal" id="modal">
+  <div class="box">
+    <p>Скинути весь прогрес і зірочки?</p>
+    <div class="actions">
+      <button class="btn ghost" id="noReset">Ні</button>
+      <button class="btn danger" id="yesReset">Так, скинути</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const LEVELS = [2,3,4,5,6,7,8,9,10];
+  const PASS = 0.9;
+  const KEY = 'mnozhennia-progress-v1';
+  const STAR = (on) => `<svg viewBox="0 0 24 24"><path fill="${on?'#FFB800':'#E4E1DA'}" d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6L2.5 9.4l6.6-.8z"/></svg>`;
+
+  // ---------- progress ----------
+  let progress = { stars:{} }; // stars[level] = best stars (1..3)
+  try { const s = localStorage.getItem(KEY); if (s) progress = JSON.parse(s) || progress; } catch(e){}
+  if (!progress.stars) progress.stars = {};
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(progress)); } catch(e){} }
+  const passed = l => (progress.stars[l]||0) > 0;
+  const unlocked = l => { const i = LEVELS.indexOf(l); return i === 0 || passed(LEVELS[i-1]); };
+  const totalStars = () => LEVELS.reduce((s,l)=>s+(progress.stars[l]||0),0);
+
+  const $ = id => document.getElementById(id);
+  function show(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active', s.id===id)); }
+
+  // ---------- map ----------
+  function renderMap(){
+    $('totalStars').textContent = totalStars();
+    const cur = LEVELS.find(l => unlocked(l) && !passed(l));
+    $('levels').innerHTML = LEVELS.map(l => {
+      const st = progress.stars[l]||0, lock = !unlocked(l);
+      return `<button class="lvl ${lock?'locked':''} ${l===cur?'current':''}" data-l="${l}" ${lock?'disabled':''}>
+        <span class="n"><small>×</small>${l}</span>
+        ${lock ? '<span class="lock">🔒 закрито</span>' : `<span class="stars">${STAR(st>=1)+STAR(st>=2)+STAR(st>=3)}</span>`}
+      </button>`;
+    }).join('');
+    show('mapScreen');
+  }
+  $('levels').addEventListener('click', e => {
+    const b = e.target.closest('.lvl'); if (!b || b.disabled) return;
+    startLevel(+b.dataset.l, 0);
+  });
+
+  // ---------- game state ----------
+  let G = null;
+  function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+
+  function startLevel(level, tryNo){
+    G = { level, tryNo, queue: shuffle([1,2,3,4,5,6,7,8,9,10]).map(b=>({b, repeat:false})),
+          mastered: new Set(), attempts:0, correct:0, errors:0, input:'', locked:false, cur:null, timer:null };
+    $('lvlTxt').textContent = 'Множення на ' + level + (tryNo ? ' · спроба ' + (tryNo+1) : '');
+    show('playScreen');
+    next();
+  }
+
+  function next(){
+    clearTimeout(G.timer);
+    if (!G.queue.length) return finish();
+    G.cur = G.queue.shift();
+    G.input = ''; G.locked = false;
+    const card = $('card'); card.className = 'card';
+    $('repeatTag').classList.toggle('show', G.cur.repeat);
+    $('msg').innerHTML = '&nbsp;';
+    renderExpr(); renderStats();
+  }
+
+  function renderExpr(state){
+    const a = G.level, b = G.cur.b;
+    let ans;
+    if (state === 'bad') ans = `<span class="wrong">${G.input}</span><span class="right">${a*b}</span>`;
+    else ans = `<span class="slot ${G.input?'':'empty'}">${G.input}</span>`;
+    $('expr').innerHTML = `<span>${a}</span><span>×</span><span>${b}</span><span>=</span><span class="ans">${ans}</span>`;
+  }
+
+  function renderStats(){
+    const n = G.mastered.size;
+    $('barFill').style.width = (n*10) + '%';
+    $('countTxt').textContent = n + '/10';
+    $('accTxt').textContent = 'Точність: ' + (G.attempts ? Math.round(G.correct/G.attempts*100)+'%' : '—');
+  }
+
+  function type(d){
+    if (!G || G.locked) return;
+    if (G.input.length >= 3) return;
+    if (G.input === '' && d === '0') { G.input = '0'; } else if (G.input === '0') { G.input = d; } else G.input += d;
+    renderExpr();
+  }
+  function del(){ if (!G || G.locked) return; G.input = G.input.slice(0,-1); renderExpr(); }
+
+  function submit(){
+    if (!G) return;
+    if (G.locked) { if (G.waitNext) next(); return; }
+    if (!G.input) { $('card').classList.remove('shake'); void $('card').offsetWidth; $('card').classList.add('shake'); return; }
+    const right = G.level * G.cur.b, val = parseInt(G.input,10);
+    G.attempts++; G.locked = true;
+    const card = $('card');
+    if (val === right) {
+      G.correct++; G.mastered.add(G.cur.b);
+      card.className = 'card ok pop';
+      $('msg').textContent = ['Правильно!','Молодець!','Так тримати!','Чудово!'][Math.floor(Math.random()*4)];
+      renderExpr(); renderStats();
+      G.waitNext = false;
+      G.timer = setTimeout(next, 700);
+    } else {
+      G.errors++;
+      card.className = 'card bad shake';
+      $('msg').textContent = `${G.level} × ${G.cur.b} = ${right}. Цей приклад ще повернеться`;
+      renderExpr('bad'); renderStats();
+      // повернути приклад через 2–3 інші
+      const pos = Math.min(G.queue.length, 2 + Math.floor(Math.random()*2));
+      G.queue.splice(pos, 0, { b: G.cur.b, repeat:true });
+      G.waitNext = true;
+      G.timer = setTimeout(next, 2600);
+    }
+  }
+
+  function finish(){
+    const acc = G.correct / G.attempts;
+    const ok = acc >= PASS;
+    let stars = 0;
+    if (ok) stars = G.errors === 0 ? 3 : (G.tryNo === 0 ? 2 : 1);
+    const prev = progress.stars[G.level]||0;
+    if (stars > prev) { progress.stars[G.level] = stars; save(); }
+    $('totalStars').textContent = totalStars();
+
+    const big = $('bigStars');
+    big.innerHTML = STAR(stars>=1)+STAR(stars>=2)+STAR(stars>=3);
+    [...big.children].forEach((s,i)=> setTimeout(()=>s.classList.add('in'), 200 + i*250));
+    $('resAcc').textContent = Math.round(acc*100) + '%';
+    $('resErr').textContent = G.errors;
+    const e = G.errors, m10 = e % 10, m100 = e % 100;
+    $('resErr').nextElementSibling.textContent =
+      (m10 === 1 && m100 !== 11) ? 'помилка' : (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) ? 'помилки' : 'помилок';
+
+    const idx = LEVELS.indexOf(G.level), nextL = LEVELS[idx+1];
+    const acts = $('resActions'); acts.innerHTML = '';
+    const add = (txt, cls, fn) => { const b = document.createElement('button'); b.className = 'btn ' + cls; b.textContent = txt; b.onclick = fn; acts.appendChild(b); };
+
+    if (ok) {
+      $('resTitle').textContent = stars === 3 ? 'Ідеально!' : 'Рівень пройдено!';
+      $('resText').textContent = nextL
+        ? `Множення на ${G.level} вивчено. Відкрито рівень ×${nextL}.`
+        : 'Ти пройшов усю таблицю множення! Можна повернутися до будь-якого рівня й зібрати всі зірочки.';
+      add('До рівнів', 'ghost', renderMap);
+      if (nextL) add(`Далі: ×${nextL}`, '', () => startLevel(nextL, 0));
+      else add('Ще раз ×' + G.level, '', () => startLevel(G.level, 0));
+    } else {
+      $('resTitle').textContent = 'Майже вийшло!';
+      $('resText').textContent = `Потрібно не менше 90% правильних відповідей, а вийшло ${Math.round(acc*100)}%. Спробуй ще раз, у тебе вийде!`;
+      add('До рівнів', 'ghost', renderMap);
+      const lvl = G.level, t = G.tryNo + 1;
+      add('Спробувати ще', '', () => startLevel(lvl, t));
+    }
+    G = null;
+    show('resultScreen');
+  }
+
+  // ---------- keypad ----------
+  const keys = ['1','2','3','4','5','6','7','8','9','del','0','go'];
+  $('pad').innerHTML = keys.map(k => k==='del' ? '<button class="key del" data-k="del" aria-label="Стерти">⌫</button>'
+    : k==='go' ? '<button class="key go" data-k="go">OK</button>' : `<button class="key" data-k="${k}">${k}</button>`).join('');
+  $('pad').addEventListener('click', e => {
+    const b = e.target.closest('.key'); if (!b) return;
+    const k = b.dataset.k;
+    if (k === 'del') del(); else if (k === 'go') submit(); else type(k);
+  });
+  document.addEventListener('keydown', e => {
+    if (!$('playScreen').classList.contains('active')) {
+      if (e.key === 'Enter' && $('resultScreen').classList.contains('active')) {
+        const last = $('resActions').lastElementChild; if (last) { e.preventDefault(); last.click(); }
+      }
+      return;
+    }
+    if (/^[0-9]$/.test(e.key)) { e.preventDefault(); type(e.key); }
+    else if (e.key === 'Backspace') { e.preventDefault(); del(); }
+    else if (e.key === 'Enter') { e.preventDefault(); submit(); }
+    else if (e.key === 'Escape') { if (G) clearTimeout(G.timer); G = null; renderMap(); }
+  });
+
+  $('backBtn').onclick = () => { if (G) clearTimeout(G.timer); G = null; renderMap(); };
+  $('resetBtn').onclick = () => $('modal').classList.add('show');
+  $('noReset').onclick = () => $('modal').classList.remove('show');
+  $('yesReset').onclick = () => { progress = {stars:{}}; save(); $('modal').classList.remove('show'); renderMap(); };
+
+  renderMap();
+})();
+</script>
+</body>
+</html>
